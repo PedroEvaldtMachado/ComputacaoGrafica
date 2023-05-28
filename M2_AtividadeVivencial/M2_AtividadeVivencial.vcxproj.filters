@@ -41,4 +41,8 @@
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <Object Include="objetos\cube.obj" />
+    <Object Include="objetos\suzanneTri.obj" />
+  </ItemGroup>
 </Project>
