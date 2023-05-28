@@ -141,6 +141,10 @@
     <None Include="shaders\hello.fs" />
     <None Include="shaders\hello.vs" />
   </ItemGroup>
+  <ItemGroup>
+    <Object Include="objetos\cube.obj" />
+    <Object Include="objetos\suzanneTri.obj" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
