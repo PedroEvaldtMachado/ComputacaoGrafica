@@ -86,7 +86,7 @@ int main()
 	glViewport(0, 0, width, height);
 
 	// Compilando e buildando o programa de shader
-	Shader shader = Shader("../M1_2/shaders/hello.vs", "../M1_2/shaders/hello.fs");
+	Shader shader = Shader("../M2/shaders/hello.vs", "../M2/shaders/hello.fs");
 
 	// Gerando um buffer simples, com a geometria de um triângulo
 	GLuint VAO = setupGeometry();

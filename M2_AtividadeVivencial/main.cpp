@@ -32,14 +32,17 @@ using namespace std;
 // Protótipo da função de callback de teclado
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 
+// Valida se pressionou ou soltou o botão
+bool pressRelease(int action);
+
 // Protótipos das funções
 int setupGeometry();
 
 // Dimensões da janela (pode ser alterado em tempo de execução)
 const GLuint WIDTH = 1000, HEIGHT = 1000;
 
-bool rotateX = false, rotateY = false, rotateZ = false;
-bool moveUp = false, moveDown = false, moveLeft = false, moveRight = false;
+bool rotateUp = false, rotateDown = false, rotateLeft = false, rotateRight = false, rotateAngleLeft = false, rotateAngleRight = false;
+bool moveUp = false, moveDown = false, moveLeft = false, moveRight = false, moveFront = false, moveBack = false;
 bool bigger = false, smaller = false;
 int objectsRef = 0;
 int selectedObject = 0;
@@ -147,35 +150,58 @@ int main()
 					createObject = false;
 				}
 
-				if (rotateX)
+				if (rotateUp && !rotateDown)
 				{
 					rotateXObjects[i] += glm::radians(1.0f);
 				}
-				if (rotateY)
+				else if (rotateDown && !rotateUp)
+				{
+					rotateXObjects[i] -= glm::radians(1.0f);
+				}
+
+				if (rotateLeft && !rotateRight)
 				{
 					rotateYObjects[i] += glm::radians(1.0f);
 				}
-				if (rotateZ)
+				else if (rotateRight && !rotateLeft)
+				{
+					rotateYObjects[i] -= glm::radians(1.0f);
+				}
+
+				if (rotateAngleRight && !rotateAngleLeft)
 				{
 					rotateZObjects[i] += glm::radians(1.0f);
+				}
+				else if (rotateAngleLeft && !rotateAngleRight)
+				{
+					rotateZObjects[i] -= glm::radians(1.0f);
 				}
 
 				if (moveUp && !moveDown)
 				{
-					positionObjects[i] += glm::vec3(0.0f, 0.1f, 0.0f);
+					positionObjects[i] += glm::vec3(0.0f, 0.01f, 0.0f);
 				}
 				if (moveDown && !moveUp)
 				{
-					positionObjects[i] -= glm::vec3(0.0f, 0.1f, 0.0f);
+					positionObjects[i] -= glm::vec3(0.0f, 0.01f, 0.0f);
 				}
 
 				if (moveRight && !moveLeft)
 				{
-					positionObjects[i] += glm::vec3(0.1f, 0.0f, 0.0f);
+					positionObjects[i] += glm::vec3(0.01f, 0.0f, 0.0f);
 				}
 				if (moveLeft && !moveRight)
 				{
-					positionObjects[i] -= glm::vec3(0.1f, 0.0f, 0.0f);
+					positionObjects[i] -= glm::vec3(0.01f, 0.0f, 0.0f);
+				}
+
+				if (moveFront && !moveBack)
+				{
+					positionObjects[i] -= glm::vec3(0.0f, 0.0f, 0.01f);
+				}
+				if (moveBack && !moveFront)
+				{
+					positionObjects[i] += glm::vec3(0.0f, 0.0f, 0.01f);
 				}
 
 				if (bigger && !smaller)
@@ -225,60 +251,64 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
 
-	if (key == GLFW_KEY_X)
+	if (key == GLFW_KEY_X || key == GLFW_KEY_KP_8)
 	{
-		if (action == GLFW_PRESS)
-		{
-			rotateX = true;
-		}
-		else if (action == GLFW_RELEASE)
-		{
-			rotateX = false;
-		}
+		rotateUp = pressRelease(action);
 	}
 
-	if (key == GLFW_KEY_Y)
+	if (key == GLFW_KEY_KP_2)
 	{
-		if (action == GLFW_PRESS)
-		{
-			rotateY = true;
-		}
-		else if (action == GLFW_RELEASE)
-		{
-			rotateY = false;
-		}
+		rotateDown = pressRelease(action);
 	}
 
-	if (key == GLFW_KEY_Z)
+	if (key == GLFW_KEY_Y || key == GLFW_KEY_KP_4)
 	{
-		if (action == GLFW_PRESS)
-		{
-			rotateZ = true;
-		}
-		else if (action == GLFW_RELEASE)
-		{
-			rotateZ = false;
-		}
+		rotateLeft = pressRelease(action);
 	}
 
-	if (key == GLFW_KEY_W && action == GLFW_PRESS)
+	if (key == GLFW_KEY_KP_6)
 	{
-		moveUp = true;
+		rotateRight = pressRelease(action);
 	}
 
-	if (key == GLFW_KEY_S && action == GLFW_PRESS)
+	if (key == GLFW_KEY_KP_7)
 	{
-		moveDown = true;
+		rotateAngleLeft = pressRelease(action);
 	}
 
-	if (key == GLFW_KEY_A && action == GLFW_PRESS)
+	if (key == GLFW_KEY_Z || key == GLFW_KEY_KP_9)
 	{
-		moveLeft = true;
+		rotateAngleRight = pressRelease(action);
 	}
 
-	if (key == GLFW_KEY_D && action == GLFW_PRESS)
+	if (key == GLFW_KEY_W)
 	{
-		moveRight = true;
+		moveUp = pressRelease(action);
+	}
+
+	if (key == GLFW_KEY_S)
+	{
+		moveDown = pressRelease(action);
+	}
+
+	if (key == GLFW_KEY_A)
+	{
+		moveLeft = pressRelease(action);
+	}
+
+	if (key == GLFW_KEY_D)
+	{
+		moveRight = pressRelease(action);
+	}
+
+	if (key == GLFW_KEY_F)
+	{
+		moveFront = pressRelease(action);
+	}
+
+	if (key == GLFW_KEY_B)
+	{
+		moveBack = pressRelease(action);
 	}
 
 	if (key == GLFW_KEY_1 && action == GLFW_PRESS)
@@ -324,26 +354,12 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 	if (key == GLFW_KEY_KP_ADD)
 	{
-		if (action == GLFW_PRESS)
-		{
-			bigger = true;
-		}
-		else if (action == GLFW_RELEASE)
-		{
-			bigger = false;
-		}
+		bigger = pressRelease(action);
 	}
 
 	if (key == GLFW_KEY_KP_SUBTRACT)
 	{
-		if (action == GLFW_PRESS)
-		{
-			smaller = true;
-		}
-		else if (action == GLFW_RELEASE)
-		{
-			smaller = false;
-		}
+		smaller = pressRelease(action);
 	}
 
 	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS)
@@ -373,6 +389,18 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 }
 
+bool pressRelease(int action)
+{
+	if (action == GLFW_PRESS)
+	{
+		return true;
+	}
+	else if (action == GLFW_RELEASE)
+	{
+		return false;
+	}
+}
+
 // Esta função está bastante harcoded - objetivo é criar os buffers que armazenam a 
 // geometria de um triângulo
 // Apenas atributo coordenada nos vértices
@@ -380,15 +408,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 // A função retorna o identificador do VAO
 int setupGeometry()
 {
-	std::ifstream infile("../M2_AtividadeVivencial/objetos/cube.obj");
-	//std::ifstream infile("../M2_AtividadeVivencial/objetos/suzanneTri.obj");
+	//std::ifstream infile("../M2_AtividadeVivencial/objetos/cube.obj");
+	std::ifstream infile("../M2_AtividadeVivencial/objetos/suzanneTri.obj");
 	std::string line;
 
 	int indexModel = 0;
-	int models[10000][3];
+	std::vector<int> models;
 
 	int indexVectors = 0;
-	GLfloat vectors[10000][3];
+	std::vector<std::vector<GLfloat>> vectors;
 
 	while (std::getline(infile, line))
 	{
@@ -420,9 +448,14 @@ int setupGeometry()
 				float teste1 = std::stof(tokens[2]);
 				float teste2 = std::stof(tokens[3]);
 
-				vectors[indexVectors][0] = std::stof(tokens[1]);
-				vectors[indexVectors][1] = std::stof(tokens[2]);
-				vectors[indexVectors][2] = std::stof(tokens[3]);
+				std::vector<GLfloat> vectorLine;
+
+				vectorLine.insert(vectorLine.end(), std::stof(tokens[1]));
+				vectorLine.insert(vectorLine.end(), std::stof(tokens[2]));
+				vectorLine.insert(vectorLine.end(), std::stof(tokens[3]));
+
+				vectors.insert(vectors.end(), vectorLine);
+
 				indexVectors++;
 			}
 		}
@@ -442,28 +475,25 @@ int setupGeometry()
 			{
 				std::string delimiter = "/";
 				std::string tokenBarra = tokens[iToken].substr(0, tokens[iToken].find(delimiter));
-				models[indexModel][iToken - 1] = (std::stoi(tokenBarra) - 1);
+
+				models.insert(models.end(), (std::stoi(tokenBarra) - 1));
 			}
 
 			indexModel++;
 		}
 	}
 
-	GLfloat* vertices = new GLfloat[indexModel * 3 * 6 * 6];
+	qtdVertices = models.size();
+	std::vector<GLfloat> vertices;
 
-	for (int i = 0; i < indexModel; i++)
+	for (int i = 0; i < models.size(); i++)
 	{
-		for (int iModelPontos = 0; iModelPontos < 3; iModelPontos++)
-		{
-			*((vertices + i * 18) + iModelPontos * 6) = vectors[models[i][iModelPontos]][0];
-			*((vertices + i * 18) + iModelPontos * 6 + 1) = vectors[models[i][iModelPontos]][1];
-			*((vertices + i * 18) + iModelPontos * 6 + 2) = vectors[models[i][iModelPontos]][2];
-			*((vertices + i * 18) + iModelPontos * 6 + 3) = iModelPontos == 0 ? 1.0f : 0.0f;
-			*((vertices + i * 18) + iModelPontos * 6 + 4) = iModelPontos == 1 ? 1.0f : 0.0f;
-			*((vertices + i * 18) + iModelPontos * 6 + 5) = iModelPontos == 2 ? 1.0f : 0.0f;
-
-			qtdVertices++;
-		}
+		vertices.insert(vertices.end(), vectors[models[i]][0]);
+		vertices.insert(vertices.end(), vectors[models[i]][1]);
+		vertices.insert(vertices.end(), vectors[models[i]][2]);
+		vertices.insert(vertices.end(), i % 2 == 0 ? 1.0f : 0.0f);
+		vertices.insert(vertices.end(), i % 2 == 1 ? 1.0f : 0.0f);
+		vertices.insert(vertices.end(), i % 2 == 0 ? 1.0f : 0.0f);
 	}
 
 	GLuint VBO, VAO;
@@ -475,7 +505,7 @@ int setupGeometry()
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
 	//Envia os dados do array de floats para o buffer da OpenGl
-	glBufferData(GL_ARRAY_BUFFER, qtdVertices * 6 * sizeof(GLfloat), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW);
 
 	//Geração do identificador do VAO (Vertex Array Object)
 	glGenVertexArrays(1, &VAO);
