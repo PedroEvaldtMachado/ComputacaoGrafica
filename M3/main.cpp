@@ -39,16 +39,20 @@ bool pressRelease(int action);
 // Protótipos das funções
 int setupGeometry();
 
-//Carrega a textura
+// Carrega a textura
 GLuint carregarTextura();
 
-//print das instruções de funcionamento
+// Print das instruções de funcionamento
 void mostrarInstrucoes();
 
 // Dimensões da janela (pode ser alterado em tempo de execução)
 const GLuint WIDTH = 1000, HEIGHT = 1000;
 
-//1 = Cubo, 2 = Bola, 3 = Suzanne
+// Diretórios dos modelos
+std::string diretorioModelos = "../M3/objetos/";
+std::string diretorioImagemModelo = "";
+
+// 1 = Cubo, 2 = Bola, 3 = Suzanne
 const int imagem = 3;
 
 bool rotateUp = false, rotateDown = false, rotateLeft = false, rotateRight = false, rotateAngleLeft = false, rotateAngleRight = false;
@@ -420,34 +424,32 @@ bool pressRelease(int action)
 // A função retorna o identificador do VAO
 int setupGeometry()
 {
-	std::string filename;
+	std::string filename = diretorioModelos;
+	std::string diretorioMtl;
 
 	if (imagem == 1)
 	{
-		filename = "../M3/objetos/CuboTextured.obj";
+		filename += "CuboTextured.obj";
 	}
 	else if (imagem == 2)
 	{
-		filename = "../M3/objetos/bola.obj";
+		filename += "bola.obj";
 	}
 	else if (imagem == 3)
 	{
-		filename = "../M3/objetos/suzanneTri.obj";
+		filename += "suzanneTri.obj";
 	}
 
-	std::ifstream infile(filename);
-	std::string line;
-
 	std::vector<std::vector<int>> models;
-
 	std::vector<std::vector<GLfloat>> vectors;
 	std::vector<std::vector<GLfloat>> normalVectors;
 	std::vector<std::vector<GLfloat>> textureVectors;
 
+	std::ifstream infile(filename);
+	std::string line;
+
 	while (std::getline(infile, line))
 	{
-		//std::istringstream iss(line);
-
 		if (line[0] == 'v')
 		{
 			if (line[1] == 't')
@@ -540,6 +542,40 @@ int setupGeometry()
 				models.insert(models.end(), modelsLine);
 			}
 		}
+		else if ((int)line.find("mtllib") >= 0)
+		{
+			std::vector<string> tokens;
+			std::istringstream tokenizer { line };
+			std::string token;
+
+			// separa as string por espaço e coloca no vetor destino
+			while (tokenizer >> token)
+			{
+				tokens.push_back(token);
+			}
+
+			diretorioMtl = diretorioModelos + tokens[1];
+		}
+	}
+
+	std::ifstream infileMtl(diretorioMtl);
+
+	while (std::getline(infileMtl, line))
+	{
+		if ((int)line.find("map_Kd") >= 0)
+		{
+			std::vector<string> tokens;
+			std::istringstream tokenizer { line };
+			std::string token;
+
+			// separa as string por espaço e coloca no vetor destino
+			while (tokenizer >> token)
+			{
+				tokens.push_back(token);
+			}
+
+			diretorioImagemModelo = diretorioModelos + tokens[1];
+		}
 	}
 
 	qtdVertices = models.size();
@@ -608,23 +644,8 @@ int setupGeometry()
 	return VAO;
 }
 
-GLuint carregarTextura() 
+GLuint carregarTextura()
 {
-	std::string textureFilename;
-
-	if (imagem == 1)
-	{
-		textureFilename = "../M3/objetos/Cube.png";
-	}
-	else if (imagem == 2)
-	{
-		textureFilename = "../M3/objetos/bola.bmp";
-	}
-	else if (imagem == 3)
-	{
-		textureFilename = "../M3/objetos/Suzanne.png";
-	}
-
 	GLuint texID;
 
 	// Gera o identificador da textura na memória 
@@ -637,7 +658,7 @@ GLuint carregarTextura()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	int width, height, nrChannels;
-	unsigned char* data = stbi_load(textureFilename.c_str(), &width, &height, &nrChannels, 0);
+	unsigned char* data = stbi_load(diretorioImagemModelo.c_str(), &width, &height, &nrChannels, 0);
 
 	if (data)
 	{
