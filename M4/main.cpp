@@ -40,7 +40,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 bool pressRelease(int action);
 
 // Executa a interacao dos comandos com objeto
-void executarAcao(Objeto &objeto);
+void executarAcaoObjeto(Objeto &objeto);
 
 // Print das instruções de funcionamento
 void mostrarInstrucoes();
@@ -57,9 +57,10 @@ const int imagem = 1;
 bool rotateUp = false, rotateDown = false, rotateLeft = false, rotateRight = false, rotateAngleLeft = false, rotateAngleRight = false;
 bool moveUp = false, moveDown = false, moveLeft = false, moveRight = false, moveFront = false, moveBack = false;
 bool bigger = false, smaller = false;
-int qtdObjetos = 0;
-int selectedObject = 0;
+
 bool createObject = true;
+int selectedObject = 0;
+vector<Objeto> objetos;
 
 // Função MAIN
 int main()
@@ -115,8 +116,6 @@ int main()
 
 	mostrarInstrucoes();
 
-	vector<Objeto> objetos;
-
 	// Loop da aplicação - "game loop"
 	while (!glfwWindowShouldClose(window))
 	{
@@ -133,7 +132,7 @@ int main()
 		if (createObject)
 		{
 			Objeto novoObjeto = Objeto();
-			string modelo = obterArquivoModelo((qtdObjetos % 3) + 1);
+			string modelo = obterArquivoModelo((objetos.size() % 3) + 1);
 
 			novoObjeto.IniciarObjeto(diretorioModelos, modelo);
 			objetos.insert(objetos.end(), novoObjeto);
@@ -141,13 +140,11 @@ int main()
 			createObject = false;
 		}
 
-		qtdObjetos = objetos.size();
-
 		for (int i = 0; i < objetos.size(); i++)
 		{
 			if (i == selectedObject)
 			{
-				executarAcao(objetos[i]);
+				executarAcaoObjeto(objetos[i]);
 			}
 
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(objetos[i].ObtetModel()));
@@ -320,10 +317,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS)
 	{
-		if (qtdObjetos < 9)
+		if (objetos.size() < 9)
 		{
 			createObject = true;
-			selectedObject = qtdObjetos;
+			selectedObject = objetos.size();
 		}
 		else
 		{
@@ -332,9 +329,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	else if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS)
 	{
-		if (qtdObjetos > 0)
+		if (objetos.size() > 0)
 		{
-			selectedObject = qtdObjetos - 2;
+			objetos.resize(objetos.size() - 1);
+			selectedObject = objetos.size() - 1;
 		}
 		else
 		{
@@ -355,7 +353,7 @@ bool pressRelease(int action)
 	}
 }
 
-void executarAcao(Objeto &objeto) 
+void executarAcaoObjeto(Objeto &objeto) 
 {
 	if (rotateUp && !rotateDown)
 	{
