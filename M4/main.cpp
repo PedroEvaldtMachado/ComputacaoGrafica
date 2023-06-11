@@ -13,7 +13,7 @@
 #include <sstream>
 #include <fstream>
 
-using namespace std;
+#include "Objeto.cpp"
 
 // GLAD
 #include <glad/glad.h>
@@ -30,17 +30,17 @@ using namespace std;
 #include "stb_image.h"
 #include <vector>
 
+// Obtem o modelo dentro das imagens pré-definidas
+string obterArquivoModelo(int imagem);
+
 // Protótipo da função de callback de teclado
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 
 // Valida se pressionou ou soltou o botão
 bool pressRelease(int action);
 
-// Protótipos das funções
-int setupGeometry();
-
-// Carrega a textura
-GLuint carregarTextura();
+// Executa a interacao dos comandos com objeto
+void executarAcao(Objeto &objeto);
 
 // Print das instruções de funcionamento
 void mostrarInstrucoes();
@@ -50,19 +50,16 @@ const GLuint WIDTH = 1000, HEIGHT = 1000;
 
 // Diretórios dos modelos
 std::string diretorioModelos = "../M4/objetos/";
-std::string diretorioImagemModelo = "";
 
 // 1 = Cubo, 2 = Bola, 3 = Suzanne
-const int imagem = 3;
+const int imagem = 1;
 
 bool rotateUp = false, rotateDown = false, rotateLeft = false, rotateRight = false, rotateAngleLeft = false, rotateAngleRight = false;
 bool moveUp = false, moveDown = false, moveLeft = false, moveRight = false, moveFront = false, moveBack = false;
 bool bigger = false, smaller = false;
-int objectsRef = 0;
+int qtdObjetos = 0;
 int selectedObject = 0;
 bool createObject = true;
-
-int qtdVertices = 0;
 
 // Função MAIN
 int main()
@@ -110,28 +107,15 @@ int main()
 	// Compilando e buildando o programa de shader
 	Shader shader = Shader("../M4/shaders/hello.vs", "../M4/shaders/hello.fs");
 
-	// Gerando um buffer simples, com a geometria de um triângulo
-	GLuint VAO = setupGeometry();
-	GLuint texID = carregarTextura();
-
 	glUseProgram(shader.ID);
 
-	glm::mat4 model = glm::mat4(1); //matriz identidade;
 	GLint modelLoc = glGetUniformLocation(shader.ID, "model");
-
 	glUniform1i(glGetUniformLocation(shader.ID, "tex_buffer"), 0);
-
-	//model = glm::rotate(model, /*(GLfloat)glfwGetTime()*/glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 	glEnable(GL_DEPTH_TEST);
 
 	mostrarInstrucoes();
 
-	float rotateXObjects[10];
-	float rotateYObjects[10];
-	float rotateZObjects[10];
-	glm::vec3 scales[10];
-	glm::vec3 positionObjects[10];
+	vector<Objeto> objetos;
 
 	// Loop da aplicação - "game loop"
 	while (!glfwWindowShouldClose(window))
@@ -146,103 +130,35 @@ int main()
 		glLineWidth(10);
 		glPointSize(20);
 
-		float angle = (GLfloat)glfwGetTime();
-
-		for (int i = 0; i <= objectsRef; i++)
+		if (createObject)
 		{
-			model = glm::mat4(1);
+			Objeto novoObjeto = Objeto();
+			string modelo = obterArquivoModelo((qtdObjetos % 3) + 1);
 
+			novoObjeto.IniciarObjeto(diretorioModelos, modelo);
+			objetos.insert(objetos.end(), novoObjeto);
+
+			createObject = false;
+		}
+
+		qtdObjetos = objetos.size();
+
+		for (int i = 0; i < objetos.size(); i++)
+		{
 			if (i == selectedObject)
 			{
-				if (createObject)
-				{
-					rotateXObjects[i] = rotateYObjects[i] = rotateZObjects[i] = 0;
-					positionObjects[i] = glm::vec3(0.0f, 0.0f, 0.0f);
-					scales[i] = glm::vec3(1.0f, 1.0f, 1.0f);
-
-					createObject = false;
-				}
-
-				if (rotateUp && !rotateDown)
-				{
-					rotateXObjects[i] += glm::radians(1.0f);
-				}
-				else if (rotateDown && !rotateUp)
-				{
-					rotateXObjects[i] -= glm::radians(1.0f);
-				}
-
-				if (rotateLeft && !rotateRight)
-				{
-					rotateYObjects[i] += glm::radians(1.0f);
-				}
-				else if (rotateRight && !rotateLeft)
-				{
-					rotateYObjects[i] -= glm::radians(1.0f);
-				}
-
-				if (rotateAngleRight && !rotateAngleLeft)
-				{
-					rotateZObjects[i] += glm::radians(1.0f);
-				}
-				else if (rotateAngleLeft && !rotateAngleRight)
-				{
-					rotateZObjects[i] -= glm::radians(1.0f);
-				}
-
-				if (moveUp && !moveDown)
-				{
-					positionObjects[i] += glm::vec3(0.0f, 0.01f, 0.0f);
-				}
-				if (moveDown && !moveUp)
-				{
-					positionObjects[i] -= glm::vec3(0.0f, 0.01f, 0.0f);
-				}
-
-				if (moveRight && !moveLeft)
-				{
-					positionObjects[i] += glm::vec3(0.01f, 0.0f, 0.0f);
-				}
-				if (moveLeft && !moveRight)
-				{
-					positionObjects[i] -= glm::vec3(0.01f, 0.0f, 0.0f);
-				}
-
-				if (moveFront && !moveBack)
-				{
-					positionObjects[i] -= glm::vec3(0.0f, 0.0f, 0.01f);
-				}
-				if (moveBack && !moveFront)
-				{
-					positionObjects[i] += glm::vec3(0.0f, 0.0f, 0.01f);
-				}
-
-				if (bigger && !smaller)
-				{
-					scales[i] += glm::vec3(0.01f, 0.01f, 0.01f);
-				}
-				else if (smaller && !bigger)
-				{
-					scales[i] -= glm::vec3(0.01f, 0.01f, 0.01f);
-				}
+				executarAcao(objetos[i]);
 			}
 
-			model = glm::translate(model, positionObjects[i]);
-			model = glm::scale(model, scales[i]);
-
-			model = glm::rotate(model, rotateXObjects[i], glm::vec3(1.0f, 0.0f, 0.0f));
-			model = glm::rotate(model, rotateYObjects[i], glm::vec3(0.0f, 1.0f, 0.0f));
-			model = glm::rotate(model, rotateZObjects[i], glm::vec3(0.0f, 0.0f, 1.0f));
-
-			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(objetos[i].ObtetModel()));
 
 			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, texID);
+			glBindTexture(GL_TEXTURE_2D, objetos[i].IdTextura);
 
 			// Chamada de desenho - drawcall
 			// Poligono Preenchido - GL_TRIANGLES (12 TRIANGLES * 3 PONTOS)
-			glBindVertexArray(VAO);
-			glDrawArrays(GL_TRIANGLES, 0, qtdVertices);
+			glBindVertexArray(objetos[i].VAO);
+			glDrawArrays(GL_TRIANGLES, 0, objetos[i].ObterQuantidadeVertices());
 		}
 
 		moveUp = moveDown = moveLeft = moveRight = false;
@@ -251,12 +167,36 @@ int main()
 		glfwSwapBuffers(window);
 	}
 
-	// Pede pra OpenGL desalocar os buffers
-	glDeleteVertexArrays(1, &VAO);
+	for (int i = 0; i < objetos.size(); i++)
+	{
+		// Pede pra OpenGL desalocar os buffers
+		glDeleteVertexArrays(1, &objetos[i].VAO);
+	}
+	
 	// Finaliza a execução da GLFW, limpando os recursos alocados por ela
 	glfwTerminate();
 
 	return 0;
+}
+
+string obterArquivoModelo(int imagem)
+{
+	string modelo;
+
+	if (imagem == 1)
+	{
+		modelo = "CuboTextured.obj";
+	}
+	else if (imagem == 2)
+	{
+		modelo = "bola.obj";
+	}
+	else if (imagem == 3)
+	{
+		modelo = "suzanneTri.obj";
+	}
+
+	return modelo;
 }
 
 // Função de callback de teclado - só pode ter uma instância (deve ser estática se
@@ -380,11 +320,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS)
 	{
-		if (objectsRef < 9)
+		if (qtdObjetos < 9)
 		{
 			createObject = true;
-			objectsRef++;
-			selectedObject = objectsRef;
+			selectedObject = qtdObjetos;
 		}
 		else
 		{
@@ -393,10 +332,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	else if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS)
 	{
-		if (objectsRef > 0)
+		if (qtdObjetos > 0)
 		{
-			objectsRef--;
-			selectedObject = objectsRef;
+			selectedObject = qtdObjetos - 2;
 		}
 		else
 		{
@@ -417,270 +355,70 @@ bool pressRelease(int action)
 	}
 }
 
-// Esta função está bastante harcoded - objetivo é criar os buffers que armazenam a 
-// geometria de um triângulo
-// Apenas atributo coordenada nos vértices
-// 1 VBO com as coordenadas, VAO com apenas 1 ponteiro para atributo
-// A função retorna o identificador do VAO
-int setupGeometry()
+void executarAcao(Objeto &objeto) 
 {
-	std::string filename = diretorioModelos;
-	std::string diretorioMtl;
-
-	if (imagem == 1)
+	if (rotateUp && !rotateDown)
 	{
-		filename += "CuboTextured.obj";
+		objeto.RotacionarX(1);
 	}
-	else if (imagem == 2)
+	else if (rotateDown && !rotateUp)
 	{
-		filename += "bola.obj";
-	}
-	else if (imagem == 3)
-	{
-		filename += "suzanneTri.obj";
+		objeto.RotacionarX(-1);
 	}
 
-	std::vector<std::vector<int>> models;
-	std::vector<std::vector<GLfloat>> vectors;
-	std::vector<std::vector<GLfloat>> normalVectors;
-	std::vector<std::vector<GLfloat>> textureVectors;
-
-	std::ifstream infile(filename);
-	std::string line;
-
-	while (std::getline(infile, line))
+	if (rotateLeft && !rotateRight)
 	{
-		if (line[0] == 'v')
-		{
-			if (line[1] == 't')
-			{
-				std::vector<string> tokens;
-				std::istringstream tokenizer{ line };
-				std::string token;
-
-				// separa as string por espaço e coloca no vetor destino
-				while (tokenizer >> token)
-				{
-					tokens.push_back(token);
-				}
-
-				std::vector<GLfloat> textureLine;
-
-				textureLine.insert(textureLine.end(), std::stof(tokens[1]));
-				textureLine.insert(textureLine.end(), std::stof(tokens[2]));
-
-				textureVectors.insert(textureVectors.end(), textureLine);
-			}
-			if (line[1] == 'n')
-			{
-				std::vector<string> tokens;
-				std::istringstream tokenizer{ line };
-				std::string token;
-
-				// separa as string por espaço e coloca no vetor destino
-				while (tokenizer >> token)
-				{
-					tokens.push_back(token);
-				}
-
-				std::vector<GLfloat> normalLine;
-
-				normalLine.insert(normalLine.end(), std::stof(tokens[1]));
-				normalLine.insert(normalLine.end(), std::stof(tokens[2]));
-				normalLine.insert(normalLine.end(), std::stof(tokens[3]));
-
-				normalVectors.insert(normalVectors.end(), normalLine);
-			}
-			else if (line[1] == ' ')
-			{
-				std::vector<string> tokens;
-				std::istringstream tokenizer{ line };
-				std::string token;
-
-				// separa as string por espaço e coloca no vetor destino
-				while (tokenizer >> token)
-				{
-					tokens.push_back(token);
-				}
-
-				std::vector<GLfloat> vectorLine;
-
-				vectorLine.insert(vectorLine.end(), std::stof(tokens[1]));
-				vectorLine.insert(vectorLine.end(), std::stof(tokens[2]));
-				vectorLine.insert(vectorLine.end(), std::stof(tokens[3]));
-
-				vectors.insert(vectors.end(), vectorLine);
-			}
-		}
-		else if (line[0] == 'f' && line[1] == ' ')
-		{
-			std::vector<string> tokens;
-			std::istringstream tokenizer { line };
-			std::string token;
-
-			// separa as string por espaço e coloca no vetor destino
-			while (tokenizer >> token)
-			{
-				tokens.push_back(token);
-			}
-
-			for (int iToken = 1; iToken < tokens.size(); iToken++)
-			{
-				std::string delimiter = "/";
-				std::vector<int> modelsLine;
-
-				std::string tokenBarra = tokens[iToken].substr(0, tokens[iToken].find(delimiter));
-				modelsLine.insert(modelsLine.end(), (std::stoi(tokenBarra) - 1));
-
-				std::string aux = tokens[iToken].substr(tokens[iToken].find(delimiter) + 1, tokens[iToken].length());
-				tokenBarra = aux.substr(0, aux.find(delimiter));
-				modelsLine.insert(modelsLine.end(), (std::stoi(tokenBarra) - 1));
-
-				tokenBarra = aux.substr(aux.find(delimiter) + 1, aux.length());
-				modelsLine.insert(modelsLine.end(), (std::stoi(tokenBarra) - 1));
-
-				models.insert(models.end(), modelsLine);
-			}
-		}
-		else if ((int)line.find("mtllib") >= 0)
-		{
-			std::vector<string> tokens;
-			std::istringstream tokenizer { line };
-			std::string token;
-
-			// separa as string por espaço e coloca no vetor destino
-			while (tokenizer >> token)
-			{
-				tokens.push_back(token);
-			}
-
-			diretorioMtl = diretorioModelos + tokens[1];
-		}
+		objeto.RotacionarY(1);
+	}
+	else if (rotateRight && !rotateLeft)
+	{
+		objeto.RotacionarY(-1);
 	}
 
-	std::ifstream infileMtl(diretorioMtl);
-
-	while (std::getline(infileMtl, line))
+	if (rotateAngleRight && !rotateAngleLeft)
 	{
-		if ((int)line.find("map_Kd") >= 0)
-		{
-			std::vector<string> tokens;
-			std::istringstream tokenizer { line };
-			std::string token;
-
-			// separa as string por espaço e coloca no vetor destino
-			while (tokenizer >> token)
-			{
-				tokens.push_back(token);
-			}
-
-			diretorioImagemModelo = diretorioModelos + tokens[1];
-		}
+		objeto.RotacionarZ(1);
+	}
+	else if (rotateAngleLeft && !rotateAngleRight)
+	{
+		objeto.RotacionarZ(-1);
 	}
 
-	qtdVertices = models.size();
-	std::vector<GLfloat> vertices;
-
-	int indexVectors = 0;
-	int indexTexture = 1;
-	int indexNormals = 2;
-
-	for (int i = 0; i < models.size(); i++)
+	if (moveUp && !moveDown)
 	{
-		vertices.insert(vertices.end(), vectors[models[i][indexVectors]][0]);
-		vertices.insert(vertices.end(), vectors[models[i][indexVectors]][1]);
-		vertices.insert(vertices.end(), vectors[models[i][indexVectors]][2]);
-		vertices.insert(vertices.end(), normalVectors[models[i][indexNormals]][0]);
-		vertices.insert(vertices.end(), normalVectors[models[i][indexNormals]][1]);
-		vertices.insert(vertices.end(), normalVectors[models[i][indexNormals]][2]);
-		vertices.insert(vertices.end(), textureVectors[models[i][indexTexture]][0]);
-		vertices.insert(vertices.end(), textureVectors[models[i][indexTexture]][1]);
+		objeto.MoverY(0.01f);
+	}
+	if (moveDown && !moveUp)
+	{
+		objeto.MoverY(-0.01f);
 	}
 
-	GLuint VBO, VAO;
-
-	//Geração do identificador do VBO
-	glGenBuffers(1, &VBO);
-
-	//Faz a conexão (vincula) do buffer como um buffer de array
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-	//Envia os dados do array de floats para o buffer da OpenGl
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW);
-
-	//Geração do identificador do VAO (Vertex Array Object)
-	glGenVertexArrays(1, &VAO);
-
-	// Vincula (bind) o VAO primeiro, e em seguida  conecta e seta o(s) buffer(s) de vértices
-	// e os ponteiros para os atributos 
-	glBindVertexArray(VAO);
-
-	//Para cada atributo do vertice, criamos um "AttribPointer" (ponteiro para o atributo), indicando: 
-	// Localização no shader * (a localização dos atributos devem ser correspondentes no layout especificado no vertex shader)
-	// Numero de valores que o atributo tem (por ex, 3 coordenadas xyz) 
-	// Tipo do dado
-	// Se está normalizado (entre zero e um)
-	// Tamanho em bytes 
-	// Deslocamento a partir do byte zero 
-
-	//Atributo posição (x, y, z)
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-
-	//Atributo cor (r, g, b)
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(1);
-
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-	glEnableVertexAttribArray(2);
-
-	// Observe que isso é permitido, a chamada para glVertexAttribPointer registrou o VBO como o objeto de buffer de vértice 
-	// atualmente vinculado - para que depois possamos desvincular com segurança
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	// Desvincula o VAO (é uma boa prática desvincular qualquer buffer ou array para evitar bugs medonhos)
-	glBindVertexArray(0);
-
-	return VAO;
-}
-
-GLuint carregarTextura() 
-{
-	GLuint texID;
-
-	// Gera o identificador da textura na memória 
-	glGenTextures(1, &texID);
-	glBindTexture(GL_TEXTURE_2D, texID);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	int width, height, nrChannels;
-	unsigned char* data = stbi_load(diretorioImagemModelo.c_str(), &width, &height, &nrChannels, 0);
-
-	if (data)
+	if (moveRight && !moveLeft)
 	{
-		if (nrChannels == 3) //jpg, bmp
-		{
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-		}
-		else //png
-		{
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-		}
-
-		glGenerateMipmap(GL_TEXTURE_2D); // geração do mipmap
+		objeto.MoverX(0.01f);
 	}
-	else
+	if (moveLeft && !moveRight)
 	{
-		std::cout << "Failed to load texture" << std::endl;
+		objeto.MoverX(-0.01f);
 	}
 
-	stbi_image_free(data);
+	if (moveFront && !moveBack)
+	{
+		objeto.MoverZ(-0.01f);
+	}
+	if (moveBack && !moveFront)
+	{
+		objeto.MoverZ(0.01f);
+	}
 
-	return texID;
+	if (bigger && !smaller)
+	{
+		objeto.AlterarTamanho(0.01f);
+	}
+	else if (smaller && !bigger)
+	{
+		objeto.AlterarTamanho(-0.01f);
+	}
 }
 
 void mostrarInstrucoes() {

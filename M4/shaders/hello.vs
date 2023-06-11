@@ -11,6 +11,6 @@ uniform mat4 model;
 void main()
 {
 	gl_Position = model * vec4(position, 1.0f);
-	vertexColor = vec4(color,1.0);
-	texCoord = vec2(tex_coord.x, tex_coord.y);
+	vertexColor = vec4(color, 1.0);
+	texCoord = vec2(tex_coord.x, 1 - tex_coord.y);
 }
