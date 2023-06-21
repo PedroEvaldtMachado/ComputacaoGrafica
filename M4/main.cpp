@@ -1,3 +1,4 @@
+#pragma warning(disable : 4996)
 /* Hello Triangle - código adaptado de https://learnopengl.com/#!Getting-started/Hello-Triangle
  *
  * Adaptado por Rossana Baptista Queiroz
@@ -12,8 +13,12 @@
 #include <assert.h>
 #include <sstream>
 #include <fstream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+#include <chrono>
 
-#include "Objeto.cpp"
+#include "objeto.cpp"
 
 // GLAD
 #include <glad/glad.h>
@@ -30,8 +35,8 @@
 #include "stb_image.h"
 #include <vector>
 
-// Obtem o modelo dentro das imagens pré-definidas
-string obterArquivoModelo(int imagem);
+// Carregar os tipos dos objetos contidos no diretório dos modelos
+void carregarTiposObjetos(string diretorio);
 
 // Protótipo da função de callback de teclado
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
@@ -45,14 +50,14 @@ void executarAcaoObjeto(Objeto &objeto);
 // Print das instruções de funcionamento
 void mostrarInstrucoes();
 
+// Mostra os tipos de objetos carregados
+int selecionarTipoNovoObjeto();
+
 // Dimensões da janela (pode ser alterado em tempo de execução)
 const GLuint WIDTH = 1000, HEIGHT = 1000;
 
 // Diretórios dos modelos
 std::string diretorioModelos = "../M4/objetos/";
-
-// 1 = Cubo, 2 = Bola, 3 = Suzanne
-const int imagem = 1;
 
 bool rotateUp = false, rotateDown = false, rotateLeft = false, rotateRight = false, rotateAngleLeft = false, rotateAngleRight = false;
 bool moveUp = false, moveDown = false, moveLeft = false, moveRight = false, moveFront = false, moveBack = false;
@@ -60,6 +65,7 @@ bool bigger = false, smaller = false;
 
 bool createObject = true;
 int selectedObject = 0;
+vector<TipoObjeto> tiposObjetos;
 vector<Objeto> objetos;
 
 // Função MAIN
@@ -114,6 +120,8 @@ int main()
 	glUniform1i(glGetUniformLocation(shader.ID, "tex_buffer"), 0);
 	glEnable(GL_DEPTH_TEST);
 
+	carregarTiposObjetos(diretorioModelos);
+
 	mostrarInstrucoes();
 
 	// Loop da aplicação - "game loop"
@@ -126,18 +134,17 @@ int main()
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f); //cor de fundo
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glLineWidth(10);
-		glPointSize(20);
-
 		if (createObject)
 		{
-			Objeto novoObjeto = Objeto();
-			string modelo = obterArquivoModelo((objetos.size() % 3) + 1);
+			// lógica para proximo objeto em tela ser diferente.
+			int novoObjetoTipo = selecionarTipoNovoObjeto();
 
-			novoObjeto.IniciarObjeto(diretorioModelos, modelo);
+			Objeto novoObjeto = Objeto(tiposObjetos[novoObjetoTipo]);
 			objetos.insert(objetos.end(), novoObjeto);
 
 			createObject = false;
+
+			selectedObject = objetos.size() - 1;
 		}
 
 		for (int i = 0; i < objetos.size(); i++)
@@ -149,12 +156,28 @@ int main()
 
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(objetos[i].ObtetModel()));
 
+			struct tm* data_hora_atual;
+			time_t segundos;
+			time(&segundos);
+			data_hora_atual = localtime(&segundos);
+
+			uint64_t ms = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
+
 			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, objetos[i].IdTextura);
+
+			if (i != selectedObject
+				|| i == selectedObject && ms % 1500 < 1000)
+			{
+				glBindTexture(GL_TEXTURE_2D, objetos[i].ObterIdTextura());
+			}
+			else 
+			{
+				glBindTexture(GL_TEXTURE_2D, 0);
+			}
 
 			// Chamada de desenho - drawcall
 			// Poligono Preenchido - GL_TRIANGLES (12 TRIANGLES * 3 PONTOS)
-			glBindVertexArray(objetos[i].VAO);
+			glBindVertexArray(objetos[i].ObterVAO());
 			glDrawArrays(GL_TRIANGLES, 0, objetos[i].ObterQuantidadeVertices());
 		}
 
@@ -167,7 +190,7 @@ int main()
 	for (int i = 0; i < objetos.size(); i++)
 	{
 		// Pede pra OpenGL desalocar os buffers
-		glDeleteVertexArrays(1, &objetos[i].VAO);
+		glDeleteVertexArrays(1, objetos[i].ObterEnderecoVAO());
 	}
 	
 	// Finaliza a execução da GLFW, limpando os recursos alocados por ela
@@ -176,35 +199,37 @@ int main()
 	return 0;
 }
 
-string obterArquivoModelo(int imagem)
+void carregarTiposObjetos(string diretorio)
 {
-	string modelo;
+	vector<string> files;
 
-	if (imagem == 1)
-	{
-		modelo = "CuboTextured.obj";
-	}
-	else if (imagem == 2)
-	{
-		modelo = "bola.obj";
-	}
-	else if (imagem == 3)
-	{
-		modelo = "suzanneTri.obj";
-	}
+	DIR* dirp = opendir(diretorio.c_str());
+	struct dirent* dp;
 
-	return modelo;
+	while ((dp = readdir(dirp)) != NULL) {
+		std::string file_name(dp->d_name);
+		if (file_name.size() >= 4 && file_name.substr(file_name.size() - 4) == ".obj") {
+			files.push_back(file_name);
+		}
+	}
+	
+	closedir(dirp);
+
+	for (int i = 0; i < files.size(); i++)
+	{
+		string modelo = "";
+
+		TipoObjeto novoTipoObjeto = TipoObjeto(diretorio, files[i]);
+		tiposObjetos.insert(tiposObjetos.end(), novoTipoObjeto);
+	}
 }
 
-// Função de callback de teclado - só pode ter uma instância (deve ser estática se
-// estiver dentro de uma classe) - É chamada sempre que uma tecla for pressionada
-// ou solta via GLFW
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
 
-	if (key == GLFW_KEY_X || key == GLFW_KEY_KP_8)
+	if (key == GLFW_KEY_KP_8)
 	{
 		rotateUp = pressRelease(action);
 	}
@@ -214,7 +239,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		rotateDown = pressRelease(action);
 	}
 
-	if (key == GLFW_KEY_Y || key == GLFW_KEY_KP_4)
+	if (key == GLFW_KEY_KP_4)
 	{
 		rotateLeft = pressRelease(action);
 	}
@@ -229,7 +254,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		rotateAngleLeft = pressRelease(action);
 	}
 
-	if (key == GLFW_KEY_Z || key == GLFW_KEY_KP_9)
+	if (key == GLFW_KEY_KP_9)
 	{
 		rotateAngleRight = pressRelease(action);
 	}
@@ -264,47 +289,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		moveBack = pressRelease(action);
 	}
 
-	if (key == GLFW_KEY_1 && action == GLFW_PRESS)
-	{
-		selectedObject = 0;
-	}
-	else if (key == GLFW_KEY_2 && action == GLFW_PRESS)
-	{
-		selectedObject = 1;
-	}
-	else if (key == GLFW_KEY_3 && action == GLFW_PRESS)
-	{
-		selectedObject = 2;
-	}
-	else if (key == GLFW_KEY_4 && action == GLFW_PRESS)
-	{
-		selectedObject = 3;
-	}
-	else if (key == GLFW_KEY_5 && action == GLFW_PRESS)
-	{
-		selectedObject = 4;
-	}
-	else if (key == GLFW_KEY_6 && action == GLFW_PRESS)
-	{
-		selectedObject = 5;
-	}
-	else if (key == GLFW_KEY_7 && action == GLFW_PRESS)
-	{
-		selectedObject = 6;
-	}
-	else if (key == GLFW_KEY_8 && action == GLFW_PRESS)
-	{
-		selectedObject = 7;
-	}
-	else if (key == GLFW_KEY_9 && action == GLFW_PRESS)
-	{
-		selectedObject = 8;
-	}
-	else if (key == GLFW_KEY_0 && action == GLFW_PRESS)
-	{
-		selectedObject = 9;
-	}
-
 	if (key == GLFW_KEY_KP_ADD)
 	{
 		bigger = pressRelease(action);
@@ -317,26 +301,35 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS)
 	{
-		if (objetos.size() < 9)
-		{
-			createObject = true;
-			selectedObject = objetos.size();
-		}
-		else
-		{
-			cout << "Máximo de objectos criados permitidos" << endl;
-		}
+		createObject = true;
 	}
 	else if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS)
 	{
-		if (objetos.size() > 0)
+		objetos.resize(objetos.size() - 1);
+		selectedObject = objetos.size() - 1;
+	}
+
+	if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
+	{
+		if (selectedObject > 0)
 		{
-			objetos.resize(objetos.size() - 1);
-			selectedObject = objetos.size() - 1;
+			selectedObject--;
 		}
 		else
 		{
-			cout << "Máximo de objectos excluidos permitidos" << endl;
+			selectedObject = objetos.size() - 1;
+		}
+	}
+
+	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
+	{
+		if (selectedObject < (objetos.size() - 1))
+		{
+			selectedObject++;
+		}
+		else
+		{
+			selectedObject = 0;
 		}
 	}
 }
@@ -353,7 +346,7 @@ bool pressRelease(int action)
 	}
 }
 
-void executarAcaoObjeto(Objeto &objeto) 
+void executarAcaoObjeto(Objeto& objeto)
 {
 	if (rotateUp && !rotateDown)
 	{
@@ -411,20 +404,51 @@ void executarAcaoObjeto(Objeto &objeto)
 
 	if (bigger && !smaller)
 	{
-		objeto.AlterarTamanho(0.01f);
+		objeto.AlterarTamanho(0.002f);
 	}
 	else if (smaller && !bigger)
 	{
-		objeto.AlterarTamanho(-0.01f);
+		objeto.AlterarTamanho(-0.002f);
 	}
 }
 
 void mostrarInstrucoes() {
-	cout << "Maximo de objetos 10, sendo em ordem de criação, primeiro fica no '1' (criado junto com a tela), os seguintes nos numeros em ordem, sendo o decimo no 0" << endl;
-	cout << "WASD para mover objeto selecionado" << endl;
-	cout << "F e B para mover no eixo Z (frente <> traz) objeto selecionado" << endl;
-	cout << "XYZ para rotacionar o objeto selecionado" << endl;
-	cout << "2,4,6,7,8,9 do teclado numerico para rotacionar o objeto selecionado" << endl;
-	cout << "'+' e '-' do teclado numerico para aumentar e dimuir objeto" << endl;
-	cout << "'ENTER' e 'BACKSPACE' para adicionar e remover objetos" << endl;
+	cout << "\nO objeto selecionado ira aparecer piscando" << endl;
+	cout << "'<' '>'\t\t\t\t- Mudar a selecao clicar nas setinhas de esquerda e direita do teclado" << endl;
+	cout << "WASD\t\t\t\t- Mover objeto selecionado" << endl;
+	cout << "R e F\t\t\t\t- Mover no eixo Z (frente <> traz) objeto selecionado" << endl;
+	cout << "4,5,6,7,8,9 do teclado numerico\t- Rotacionar o objeto selecionado" << endl;
+	cout << "'+' e '-' do teclado numerico\t- Aumentar e dimuir objeto selecionado" << endl;
+	cout << "'ENTER'\t\t\t\t- Adicionar objeto na cena, escolher no console o novo tipo do objeto" << endl;
+	cout << "'BACKSPACE'\t\t\t- Remover objeto selecionado da cena" << endl;
+}
+
+int selecionarTipoNovoObjeto() 
+{
+	cout << "\nSeleciona um dos tipos de objetos: " << endl;
+
+	for (int i = 0; i < tiposObjetos.size(); i++)
+	{
+		cout << " " + to_string(i + 1) + string(" - ") + tiposObjetos[i].ObterNome() << endl;
+	}
+
+	int selecionado;
+
+	do
+	{
+		string input;
+		cout << "Opcao: ";
+		getline(cin, input);
+
+		try {
+			int i = std::stoi(input);
+
+			selecionado = i;
+		}
+		catch (std::invalid_argument const& e) {
+			selecionado = -1;
+		}
+	} while (selecionado <= 0 || selecionado > tiposObjetos.size());
+
+	return --selecionado;
 }
