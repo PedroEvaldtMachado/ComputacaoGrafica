@@ -19,6 +19,7 @@
 #include <chrono>
 
 #include "objeto.cpp"
+#include "estrutura.cpp"
 
 // GLAD
 #include <glad/glad.h>
@@ -68,6 +69,11 @@ int selectedObject = 0;
 vector<TipoObjeto> tiposObjetos;
 vector<Objeto> objetos;
 
+bool cameraSelecionada = false;
+glm::vec3 cameraPos = glm::vec3(0.0, 0.0, 3.0);
+glm::vec3 cameraFront = glm::vec3(0.0, 0.0, -1.0);
+glm::vec3 cameraUp = glm::vec3(0.0, 1.0, 0.0);
+
 // Função MAIN
 int main()
 {
@@ -115,14 +121,15 @@ int main()
 	Shader shader = Shader("../M4/shaders/hello.vs", "../M4/shaders/hello.fs");
 
 	glUseProgram(shader.ID);
-
-	GLint modelLoc = glGetUniformLocation(shader.ID, "model");
-	glUniform1i(glGetUniformLocation(shader.ID, "tex_buffer"), 0);
 	glEnable(GL_DEPTH_TEST);
 
 	carregarTiposObjetos(diretorioModelos);
-
 	mostrarInstrucoes();
+
+	Estrutura estrutura = Estrutura();
+	estrutura.NovaLuz(glm::vec3(-2.0, 10.0, 2.0));
+
+	bool carregarTextura = true;
 
 	// Loop da aplicação - "game loop"
 	while (!glfwWindowShouldClose(window))
@@ -143,42 +150,34 @@ int main()
 			objetos.insert(objetos.end(), novoObjeto);
 
 			createObject = false;
-
 			selectedObject = objetos.size() - 1;
 		}
 
 		for (int i = 0; i < objetos.size(); i++)
 		{
-			if (i == selectedObject)
+			if (!cameraSelecionada && i == selectedObject)
 			{
 				executarAcaoObjeto(objetos[i]);
 			}
-
-			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(objetos[i].ObtetModel()));
 
 			struct tm* data_hora_atual;
 			time_t segundos;
 			time(&segundos);
 			data_hora_atual = localtime(&segundos);
-
 			uint64_t ms = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
-
-			glActiveTexture(GL_TEXTURE0);
 
 			if (i != selectedObject
 				|| i == selectedObject && ms % 1500 < 1000)
 			{
-				glBindTexture(GL_TEXTURE_2D, objetos[i].ObterIdTextura());
+				carregarTextura = true;
 			}
 			else 
 			{
-				glBindTexture(GL_TEXTURE_2D, 0);
+				carregarTextura = false;
 			}
 
-			// Chamada de desenho - drawcall
-			// Poligono Preenchido - GL_TRIANGLES (12 TRIANGLES * 3 PONTOS)
-			glBindVertexArray(objetos[i].ObterVAO());
-			glDrawArrays(GL_TRIANGLES, 0, objetos[i].ObterQuantidadeVertices());
+			estrutura.CarregarEstrutura(shader, width, height);
+			objetos[i].Renderizar(shader);
 		}
 
 		moveUp = moveDown = moveLeft = moveRight = false;
@@ -201,6 +200,8 @@ int main()
 
 void carregarTiposObjetos(string diretorio)
 {
+	std::cout << "Carregando texturas do diretório...";
+
 	vector<string> files;
 
 	DIR* dirp = opendir(diretorio.c_str());
@@ -222,6 +223,8 @@ void carregarTiposObjetos(string diretorio)
 		TipoObjeto novoTipoObjeto = TipoObjeto(diretorio, files[i]);
 		tiposObjetos.insert(tiposObjetos.end(), novoTipoObjeto);
 	}
+
+	std::cout << "Finalizado!";
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
