@@ -130,7 +130,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="camera.cpp" />
+    <ClCompile Include="estrutura.cpp" />
     <ClCompile Include="glad.c" />
+    <ClCompile Include="luz.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="objeto.cpp" />
     <ClCompile Include="Shader.cpp" />

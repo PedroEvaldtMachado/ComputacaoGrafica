@@ -27,10 +27,16 @@ class TipoObjeto
 		GLuint VAO;
 		GLuint IdTextura;
 
+		float Ka;
+		float Kd;
+		float Ks;
+		float Q;
 	public:
 		TipoObjeto() {}
 		TipoObjeto(string diretorio, string modelo) {
 			QuantidadeVertices = 0;
+			Ka = Kd = Ks = 1.0f;
+			Q = 1.0f;
 
 			string diretorioImagem = CarregarObjeto(diretorio, modelo);
 			CarregarTextura(diretorioImagem);
@@ -56,150 +62,179 @@ class TipoObjeto
 		GLuint ObterIdTextura() {
 			return IdTextura;
 		}
+
+		float ObterKa() {
+			return Ka;
+		}
+
+		float ObterKd() {
+			return Kd;
+		}
+
+		float ObterKs() {
+			return Ks;
+		}
+
+		float ObterQ() {
+			return Q;
+		}
 	private:
 		string CarregarObjeto(string diretorio, string modelo) {
 			Nome = modelo;
 
 			std::string diretorioModelo = diretorio + modelo;
 			std::string diretorioMtl, diretorioImagem;
-
-			std::vector<std::vector<GLfloat>> vectors;
-			std::vector<std::vector<GLfloat>> normalVectors;
-			std::vector<std::vector<GLfloat>> textureVectors;
-
-			std::ifstream infileModelo(diretorioModelo);
-			std::string line;
-
-			int indexVectors = 0;
-			int indexTexture = 1;
-			int indexNormals = 2;
-
 			std::vector<GLfloat> vertices;
 
-			while (std::getline(infileModelo, line))
+			ifstream inputFile;
+			inputFile.open(diretorioModelo.c_str());
+
+			if (!diretorioModelo.empty())
 			{
-				if (line[0] == 'v')
+				if (inputFile.is_open())
 				{
-					if (line[1] == 't')
-					{
-						std::vector<string> tokens;
-						std::istringstream tokenizer{ line };
-						std::string token;
+					std::vector<std::vector<GLfloat>> vectors;
+					std::vector<std::vector<GLfloat>> normalVectors;
+					std::vector<std::vector<GLfloat>> textureVectors;
 
-						// separa as string por espaço e coloca no vetor destino
-						while (tokenizer >> token)
+					int indexVectors = 0;
+					int indexTexture = 1;
+					int indexNormals = 2;
+
+					std::string line;
+
+					while (!inputFile.eof() && std::getline(inputFile, line))
+					{
+						if (line[0] == 'v')
 						{
-							tokens.push_back(token);
+							if (line[1] == 't')
+							{
+								std::vector<string> tokens;
+								std::istringstream tokenizer{ line };
+								std::string token;
+
+								// separa as string por espaço e coloca no vetor destino
+								while (tokenizer >> token)
+								{
+									tokens.push_back(token);
+								}
+
+								std::vector<GLfloat> textureLine;
+
+								textureLine.insert(textureLine.end(), std::stof(tokens[1]));
+								textureLine.insert(textureLine.end(), std::stof(tokens[2]));
+
+								textureVectors.insert(textureVectors.end(), textureLine);
+							}
+							if (line[1] == 'n')
+							{
+								std::vector<string> tokens;
+								std::istringstream tokenizer{ line };
+								std::string token;
+
+								// separa as string por espaço e coloca no vetor destino
+								while (tokenizer >> token)
+								{
+									tokens.push_back(token);
+								}
+
+								std::vector<GLfloat> normalLine;
+
+								normalLine.insert(normalLine.end(), std::stof(tokens[1]));
+								normalLine.insert(normalLine.end(), std::stof(tokens[2]));
+								normalLine.insert(normalLine.end(), std::stof(tokens[3]));
+
+								normalVectors.insert(normalVectors.end(), normalLine);
+							}
+							else if (line[1] == ' ')
+							{
+								std::vector<string> tokens;
+								std::istringstream tokenizer{ line };
+								std::string token;
+
+								// separa as string por espaço e coloca no vetor destino
+								while (tokenizer >> token)
+								{
+									tokens.push_back(token);
+								}
+
+								std::vector<GLfloat> vectorLine;
+
+								vectorLine.insert(vectorLine.end(), std::stof(tokens[1]));
+								vectorLine.insert(vectorLine.end(), std::stof(tokens[2]));
+								vectorLine.insert(vectorLine.end(), std::stof(tokens[3]));
+
+								vectors.insert(vectors.end(), vectorLine);
+							}
 						}
-
-						std::vector<GLfloat> textureLine;
-
-						textureLine.insert(textureLine.end(), std::stof(tokens[1]));
-						textureLine.insert(textureLine.end(), std::stof(tokens[2]));
-
-						textureVectors.insert(textureVectors.end(), textureLine);
-					}
-					if (line[1] == 'n')
-					{
-						std::vector<string> tokens;
-						std::istringstream tokenizer{ line };
-						std::string token;
-
-						// separa as string por espaço e coloca no vetor destino
-						while (tokenizer >> token)
+						else if (line[0] == 'f' && line[1] == ' ')
 						{
-							tokens.push_back(token);
+							std::vector<string> tokens;
+							std::istringstream tokenizer { line };
+							std::string token;
+
+							// separa as string por espaço e coloca no vetor destino
+							while (tokenizer >> token)
+							{
+								tokens.push_back(token);
+							}
+
+							for (int iToken = 1; iToken < tokens.size(); iToken++)
+							{
+								std::string delimiter = "/";
+								std::vector<int> modelsLine;
+
+								std::string tokenBarra = tokens[iToken].substr(0, tokens[iToken].find(delimiter));
+								modelsLine.insert(modelsLine.end(), (std::stoi(tokenBarra) - 1));
+
+								std::string aux = tokens[iToken].substr(tokens[iToken].find(delimiter) + 1, tokens[iToken].length());
+								tokenBarra = aux.substr(0, aux.find(delimiter));
+								modelsLine.insert(modelsLine.end(), (std::stoi(tokenBarra) - 1));
+
+								tokenBarra = aux.substr(aux.find(delimiter) + 1, aux.length());
+								modelsLine.insert(modelsLine.end(), (std::stoi(tokenBarra) - 1));
+
+								vertices.insert(vertices.end(), vectors[modelsLine[indexVectors]][0]);
+								vertices.insert(vertices.end(), vectors[modelsLine[indexVectors]][1]);
+								vertices.insert(vertices.end(), vectors[modelsLine[indexVectors]][2]);
+								vertices.insert(vertices.end(), 0.5f);
+								vertices.insert(vertices.end(), 0.5f);
+								vertices.insert(vertices.end(), 0.5f);
+								vertices.insert(vertices.end(), textureVectors[modelsLine[indexTexture]][0]);
+								vertices.insert(vertices.end(), textureVectors[modelsLine[indexTexture]][1]);
+								vertices.insert(vertices.end(), normalVectors[modelsLine[indexNormals]][0]);
+								vertices.insert(vertices.end(), normalVectors[modelsLine[indexNormals]][1]);
+								vertices.insert(vertices.end(), normalVectors[modelsLine[indexNormals]][2]);
+
+								QuantidadeVertices++;
+							}
 						}
-
-						std::vector<GLfloat> normalLine;
-
-						normalLine.insert(normalLine.end(), std::stof(tokens[1]));
-						normalLine.insert(normalLine.end(), std::stof(tokens[2]));
-						normalLine.insert(normalLine.end(), std::stof(tokens[3]));
-
-						normalVectors.insert(normalVectors.end(), normalLine);
-					}
-					else if (line[1] == ' ')
-					{
-						std::vector<string> tokens;
-						std::istringstream tokenizer{ line };
-						std::string token;
-
-						// separa as string por espaço e coloca no vetor destino
-						while (tokenizer >> token)
+						else if ((int)line.find("mtllib") >= 0)
 						{
-							tokens.push_back(token);
+							std::vector<string> tokens;
+							std::istringstream tokenizer { line };
+							std::string token;
+
+							// separa as string por espaço e coloca no vetor destino
+							while (tokenizer >> token)
+							{
+								tokens.push_back(token);
+							}
+
+							diretorioMtl = diretorio + tokens[1];
 						}
-
-						std::vector<GLfloat> vectorLine;
-
-						vectorLine.insert(vectorLine.end(), std::stof(tokens[1]));
-						vectorLine.insert(vectorLine.end(), std::stof(tokens[2]));
-						vectorLine.insert(vectorLine.end(), std::stof(tokens[3]));
-
-						vectors.insert(vectors.end(), vectorLine);
-					}
-				}
-				else if (line[0] == 'f' && line[1] == ' ')
-				{
-					std::vector<string> tokens;
-					std::istringstream tokenizer { line };
-					std::string token;
-
-					// separa as string por espaço e coloca no vetor destino
-					while (tokenizer >> token)
-					{
-						tokens.push_back(token);
 					}
 
-					for (int iToken = 1; iToken < tokens.size(); iToken++)
-					{
-						std::string delimiter = "/";
-						std::vector<int> modelsLine;
-
-						std::string tokenBarra = tokens[iToken].substr(0, tokens[iToken].find(delimiter));
-						modelsLine.insert(modelsLine.end(), (std::stoi(tokenBarra) - 1));
-
-						std::string aux = tokens[iToken].substr(tokens[iToken].find(delimiter) + 1, tokens[iToken].length());
-						tokenBarra = aux.substr(0, aux.find(delimiter));
-						modelsLine.insert(modelsLine.end(), (std::stoi(tokenBarra) - 1));
-
-						tokenBarra = aux.substr(aux.find(delimiter) + 1, aux.length());
-						modelsLine.insert(modelsLine.end(), (std::stoi(tokenBarra) - 1));
-
-						vertices.insert(vertices.end(), vectors[modelsLine[indexVectors]][0]);
-						vertices.insert(vertices.end(), vectors[modelsLine[indexVectors]][1]);
-						vertices.insert(vertices.end(), vectors[modelsLine[indexVectors]][2]);
-						vertices.insert(vertices.end(), 0.5f);
-						vertices.insert(vertices.end(), 0.5f);
-						vertices.insert(vertices.end(), 0.5f);
-						vertices.insert(vertices.end(), textureVectors[modelsLine[indexTexture]][0]);
-						vertices.insert(vertices.end(), textureVectors[modelsLine[indexTexture]][1]);
-
-						QuantidadeVertices++;
-					}
-				}
-				else if ((int)line.find("mtllib") >= 0)
-				{
-					std::vector<string> tokens;
-					std::istringstream tokenizer { line };
-					std::string token;
-
-					// separa as string por espaço e coloca no vetor destino
-					while (tokenizer >> token)
-					{
-						tokens.push_back(token);
-					}
-
-					diretorioMtl = diretorio + tokens[1];
+					inputFile.close();
 				}
 			}
 
-			std::ifstream infileMtl(diretorioMtl);
-
-			while (std::getline(infileMtl, line))
+			if (!diretorioMtl.empty())
 			{
-				if ((int)line.find("map_Kd") >= 0)
+				inputFile.open(diretorioMtl.c_str());
+				std::string line;
+
+				while (!inputFile.eof() && std::getline(inputFile, line))
 				{
 					std::vector<string> tokens;
 					std::istringstream tokenizer { line };
@@ -211,7 +246,38 @@ class TipoObjeto
 						tokens.push_back(token);
 					}
 
-					diretorioImagem = diretorio + tokens[1];
+					if ((int)line.find("map_Kd") >= 0)
+					{
+						diretorioImagem = diretorio + tokens[1];
+					}
+					else if ((int)line.find("Ka") >= 0)
+					{
+						if (tokens.size() > 2)
+						{
+							Ka = std::stof(tokens[1]);
+						}
+					}
+					else if ((int)line.find("Kd") >= 0)
+					{
+						if (tokens.size() > 2)
+						{
+							Kd = std::stof(tokens[1]);
+						}
+					}
+					else if ((int)line.find("Ks") >= 0)
+					{
+						if (tokens.size() > 2)
+						{
+							Ks = std::stof(tokens[1]);
+						}
+					}
+					else if ((int)line.find("q") >= 0)
+					{
+						if (tokens.size() > 2)
+						{
+							Q = std::stof(tokens[1]);
+						}
+					}
 				}
 			}
 
@@ -242,15 +308,18 @@ class TipoObjeto
 			// Deslocamento a partir do byte zero 
 
 			//Atributo posição (x, y, z)
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(GLfloat), (GLvoid*)0);
 			glEnableVertexAttribArray(0);
 
 			//Atributo cor (r, g, b)
-			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 			glEnableVertexAttribArray(1);
 
-			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(6 * sizeof(float)));
 			glEnableVertexAttribArray(2);
+
+			glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(GLfloat), (void*)(8 * sizeof(GLfloat)));
+			glEnableVertexAttribArray(3);
 
 			// Observe que isso é permitido, a chamada para glVertexAttribPointer registrou o VBO como o objeto de buffer de vértice 
 			// atualmente vinculado - para que depois possamos desvincular com segurança
