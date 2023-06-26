@@ -7,12 +7,12 @@ class Camera {
 	public:
 		glm::vec3 Posicao;
 		glm::vec3 Frente;
-		glm::vec3 Altura;
+		glm::vec3 Up;
 
 	public:
 		Camera() {
 			Posicao = glm::vec3(0.0, 0.0, 3.0);
 			Frente = glm::vec3(0.0, 0.0, -1.0);
-			Altura = glm::vec3(0.0, 1.0, 0.0);
+			Up = glm::vec3(0.0, 1.0, 0.0);
 		}
 };
