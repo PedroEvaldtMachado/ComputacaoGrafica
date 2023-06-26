@@ -23,7 +23,7 @@ class Estrutura {
 			glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 100.0f);
 			shader.setMat4("projection", glm::value_ptr(projection));
 
-			glm::mat4 view = glm::lookAt(CameraCenario.Posicao, CameraCenario.Posicao + CameraCenario.Frente, CameraCenario.Altura);
+			glm::mat4 view = glm::lookAt(CameraCenario.Posicao, CameraCenario.Posicao + CameraCenario.Frente, CameraCenario.Up);
 			shader.setMat4("view", glm::value_ptr(view));
 
 			shader.setVec3("cameraPos", CameraCenario.Posicao.x, CameraCenario.Posicao.y, CameraCenario.Posicao.z);
