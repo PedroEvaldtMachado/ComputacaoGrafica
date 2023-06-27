@@ -28,6 +28,7 @@ private:
 	float Velocidade;
 
 	bool MoverAutomaticamente;
+	int PontosPorCiclo;
 	int Ponto;
 	float Movimento;
 	float FreioMovimento;
@@ -36,8 +37,9 @@ private:
 public:
 	Objeto() {}
 	Objeto(TipoObjeto tipo) {
+		PontosPorCiclo = 4;
 		Velocidade = 5.0f;
-		FreioMovimento = Velocidade;
+		FreioMovimento = Velocidade * 2.f;
 		Movimento = 0.0f;
 
 		Tipo = tipo;
@@ -157,15 +159,19 @@ public:
 					Movimento -= FreioMovimento;
 				}
 
-				Ponto += 3;
-
-				if (Ponto >= (int)Pontos.size())
-				{
-					Ponto = 0;
-				}
+				// Redefine após passar 2 vezes pela sequencia
+				Ponto = (Ponto + 4) % ((int)Pontos.size() * 2);
 			}
 
-			glm::vec3 destino = ObterPontoBezier(Ponto, Movimento / FreioMovimento);
+			int voltar = 0;
+
+			if (Ponto >= Pontos.size()) 
+			{
+				voltar = 1;
+			}
+
+			float qtdMovimento = abs(voltar - (Movimento / FreioMovimento));
+			glm::vec3 destino = ObterPontoBezier(Ponto % 4, qtdMovimento);
 
 			Model[3].x = 0.0f;
 			Model[3].y = 0.0f;
@@ -176,7 +182,7 @@ public:
 	}
 
 private:
-	void GerarCaminho(int quantidadePontosMultiplo12)
+	void GerarCaminho(int qtdCiclos)
 	{
 		std::random_device rd;
 		std::default_random_engine eng(rd());
@@ -184,8 +190,7 @@ private:
 
 		Pontos = vector<glm::vec3>();
 
-		// Para poder haver continuidade no movimento e utilizar a formula de bezier com potencia 3, precisei fazer calculo de MMC de 4 e 3
-		for (int i = 0; i < quantidadePontosMultiplo12 * 4 * 3; i++)
+		for (int i = 0; i < qtdCiclos * PontosPorCiclo; i++)
 		{
 			Pontos.insert(Pontos.end(), glm::vec3(Rnd(distr, eng), Rnd(distr, eng), Rnd(distr, eng)));
 		}
